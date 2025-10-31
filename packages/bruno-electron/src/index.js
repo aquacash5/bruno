@@ -72,6 +72,7 @@ setContentSecurityPolicy(contentSecurityPolicy.join(';') + ';');
 const menu = Menu.buildFromTemplate(menuTemplate);
 
 let mainWindow;
+let unsubscribes = [];
 
 // Prepare the renderer once the app is ready
 app.on('ready', async () => {
@@ -192,10 +193,10 @@ app.on('ready', async () => {
         return safeParseJSON(safeStringifyJSON(_));
       })]);
     }
-    
+
     // Handle onboarding
     await onboardUser(mainWindow, lastOpenedCollections);
-    
+
     // Send cookies list after renderer is ready
     try {
       cookiesStore.initializeCookies();
@@ -217,7 +218,7 @@ app.on('ready', async () => {
   registerPreferencesIpc(mainWindow, collectionWatcher, lastOpenedCollections);
   registerNotificationsIpc(mainWindow, collectionWatcher);
   registerFilesystemIpc(mainWindow);
-  registerSystemMonitorIpc(mainWindow, systemMonitor);
+  unsubscribes.push(registerSystemMonitorIpc(mainWindow, systemMonitor));
 });
 
 // Quit the app once all windows are closed
@@ -228,8 +229,8 @@ app.on('before-quit', () => {
     console.warn('Failed to flush cookies on quit', err);
   }
 
-  // Stop system monitoring
-  systemMonitor.stop();
+  // unsubscribe to registered events
+  unsubscribes.forEach((fn) => fn());
 });
 
 app.on('window-all-closed', app.quit);
@@ -246,9 +247,9 @@ app.on('browser-window-focus', () => {
   globalShortcut.register('Ctrl+=', () => {
     mainWindow.webContents.setZoomLevel(mainWindow.webContents.getZoomLevel() + 1);
   });
-})
+});
 
 // Disable global shortcuts when not focused
 app.on('browser-window-blur', () => {
   globalShortcut.unregisterAll()
-})
+});

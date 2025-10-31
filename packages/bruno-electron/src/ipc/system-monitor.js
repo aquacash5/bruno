@@ -1,9 +1,16 @@
 const { ipcMain } = require('electron');
 
 const registerSystemMonitorIpc = (mainWindow, systemMonitor) => {
+  const sendStatistics = (stats) => {
+    mainWindow.webContents.send('main:filesync-system-resources', stats);
+  };
+
+  systemMonitor.on('error', (err) => console.error('Error getting system stats:', err));
+
   ipcMain.handle('renderer:start-system-monitoring', (event, intervalMs = 2000) => {
     try {
-      systemMonitor.start(mainWindow, intervalMs);
+      systemMonitor.on('statistics', sendStatistics);
+      systemMonitor.setPollingInterval(intervalMs);
       return { success: true };
     } catch (error) {
       console.error('Error starting system monitoring:', error);
@@ -13,7 +20,7 @@ const registerSystemMonitorIpc = (mainWindow, systemMonitor) => {
 
   ipcMain.handle('renderer:stop-system-monitoring', (event) => {
     try {
-      systemMonitor.stop();
+      systemMonitor.off('statistics', sendStatistics);
       return { success: true };
     } catch (error) {
       console.error('Error stopping system monitoring:', error);
@@ -30,6 +37,8 @@ const registerSystemMonitorIpc = (mainWindow, systemMonitor) => {
       return { success: false, error: error.message, isActive: false };
     }
   });
+
+  return () => systemMonitor.off('statistics', sendStatistics);
 };
 
 module.exports = registerSystemMonitorIpc;

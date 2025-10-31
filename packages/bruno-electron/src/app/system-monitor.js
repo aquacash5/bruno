@@ -1,93 +1,126 @@
 const { app } = require('electron');
+const EventEmitter = require('node:events');
 
-class SystemMonitor {
+class SystemMonitor extends EventEmitter {
   constructor() {
-    this.intervalId = null;
-    this.isMonitoring = false;
-    this.startTime = Date.now();
+    super();
+    this.timeoutId = null;
+    this.startTime = null;
+    this.pollIntervalMs = 2000;
+
+    this.on('removeListener', (event) => {
+      if (event === 'statistics' && !this.eventNames().includes('statistics')) {
+        this.__stop();
+      }
+    });
+    this.on('newListener', (event) => {
+      if (event === 'statistics') {
+        this.__start();
+      }
+    });
   }
 
-  start(win, intervalMs = 2000) {
-    if (this.isMonitoring) {
+  __start() {
+    if (this.isRunning()) {
       return;
     }
 
-    this.isMonitoring = true;
-    this.startTime = Date.now();
-
-    // Emit initial stats
-    this.emitSystemStats(win);
+    this.emit('started');
 
     // Set up periodic monitoring
-    // Use setTimeout pattern instead of setInterval to avoid overlapping calls
-    this.scheduleNextEmit(win, intervalMs);
+    this.__emitSystemStats(true);
   }
 
-  scheduleNextEmit(win, intervalMs) {
-    if (!this.isMonitoring) {
-      return;
+  __stop() {
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
+      this.emit('stopped');
     }
-
-    this.intervalId = setTimeout(() => {
-      this.emitSystemStats(win);
-      this.scheduleNextEmit(win, intervalMs);
-    }, intervalMs);
   }
 
-  stop() {
-    if (this.intervalId) {
-      clearTimeout(this.intervalId);
-      this.intervalId = null;
-    }
-    this.isMonitoring = false;
-  }
-
-  emitSystemStats(win) {
+  // Use setTimeout pattern instead of setInterval to avoid overlapping calls
+  __emitSystemStats(start = false) {
     try {
-      const metrics = app.getAppMetrics();
-      const currentTime = Date.now();
-
-      let totalCPU = 0;
-      let totalMemory = 0;
-
-      for (const metric of metrics) {
-        totalCPU += metric.cpu.percentCPUUsage;
-        totalMemory += metric.memory.workingSetSize;
-      }
-
-      const uptime = (currentTime - this.startTime) / 1000;
-
-      const systemResources = {
-        cpu: totalCPU,
-        memory: totalMemory,
-        pid: process.pid,
-        uptime: uptime,
-        timestamp: new Date().toISOString()
-      };
-
-      if (win && !win.isDestroyed()) {
-        win.webContents.send('main:filesync-system-resources', systemResources);
-      }
+      this.emit('statistics', this.__getAppMetrics());
     } catch (error) {
-      console.error('Error getting system stats:', error);
+      this.emit('error', error);
 
       // Fallback stats using process.memoryUsage()
-      const fallbackStats = {
-        cpu: 0,
-        memory: process.memoryUsage().rss,
-        pid: process.pid,
-        uptime: (Date.now() - this.startTime) / 1000,
-        timestamp: new Date().toISOString()
-      };
-
-      if (win && !win.isDestroyed()) {
-        win.webContents.send('main:filesync-system-resources', fallbackStats);
+      this.emit('statistics', this.__getProcessMemory());
+    } finally {
+      if (start || this.isRunning()) {
+        this.timeoutId = setTimeout(() => this.__emitSystemStats(), this.pollIntervalMs);
       }
+    }
+  }
+
+  __getAppMetrics() {
+    const metrics = app.getAppMetrics();
+    const currentTime = new Date();
+
+    if (metrics.length === 0) {
+      throw new Error('No metrics returned');
+    }
+
+    // this will only happen once
+    if (this.startTime == null) {
+      let creationTime = metrics[0].creationTime;
+
+      for (const metric of metrics) {
+        creationTime = Math.min(metric.creationTime, creationTime);
+      }
+
+      this.startTime = new Date(creationTime);
+    }
+
+    let totalCPU = 0;
+    let totalMemory = 0;
+
+    for (const metric of metrics) {
+      totalCPU += metric.cpu.percentCPUUsage;
+      totalMemory += metric.memory.workingSetSize;
+    }
+
+    const uptime = (currentTime - this.startTime) / 1000;
+
+    return {
+      cpu: totalCPU,
+      memory: totalMemory,
+      pid: process.pid,
+      uptime: uptime,
+      timestamp: currentTime.toISOString()
+    };
+  }
+
+  __getProcessMemory() {
+    const memoryUsage = process.memoryUsage();
+    const currentTime = new Date();
+    const uptime = !this.startTime ? 0 : (currentTime - this.startTime) / 1000;
+
+    return {
+      cpu: 0,
+      memory: memoryUsage.rss,
+      pid: process.pid,
+      uptime: uptime,
+      timestamp: currentTime.toISOString()
+    };
+  }
+
+  setPollingInterval(pollingRateMs) {
+    this.emit('changePollingRate', pollingRateMs);
+    this.pollIntervalMs = pollingRateMs;
+
+    if (this.isRunning()) {
+      clearTimeout(this.timeoutId);
+
+      // Set up periodic monitor with new polling rate
+      this.__emitSystemStats();
     }
   }
 
   isRunning() {
-    return this.isMonitoring;
+    return this.timeoutId != null;
   }
 }
 
