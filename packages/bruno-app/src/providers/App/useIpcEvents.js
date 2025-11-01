@@ -26,7 +26,7 @@ import { isElectron } from 'utils/common/platform';
 import { globalEnvironmentsUpdateEvent, updateGlobalEnvironments } from 'providers/ReduxStore/slices/global-environments';
 import { collectionAddOauth2CredentialsByUrl, updateCollectionLoadingState } from 'providers/ReduxStore/slices/collections/index';
 import { addLog } from 'providers/ReduxStore/slices/logs';
-import { updateSystemResources } from 'providers/ReduxStore/slices/performance';
+import { updateSystemResources, updatePollingRateMs } from 'providers/ReduxStore/slices/performance';
 
 const useIpcEvents = () => {
   const dispatch = useDispatch();
@@ -150,6 +150,10 @@ const useIpcEvents = () => {
       dispatch(updateSystemResources(resourceData));
     });
 
+    const removePollingRateChange = ipcRenderer.on('main:filesync-system-monitor-polling', (pollingRate) => {
+      dispatch(updatePollingRateMs(pollingRate));
+    });
+
     const removeConfigUpdatesListener = ipcRenderer.on('main:bruno-config-update', (val) =>
       dispatch(brunoConfigUpdateEvent(val))
     );
@@ -215,6 +219,7 @@ const useIpcEvents = () => {
       removeCollectionLoadingStateListener();
       removePersistentEnvVariablesUpdateListener();
       removeSystemResourcesListener();
+      removePollingRateChange();
     };
   }, [isElectron]);
 };

@@ -46,15 +46,24 @@ const StyledWrapper = styled.div`
     }
   }
 
-    .system-resources {
-    margin-bottom: 16px;
+  .title-area {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 
     h2 {
-      margin: 0 0 8px 0;
+      margin: 0;
       font-size: 14px;
       font-weight: 600;
       color: ${(props) => props.theme.console.titleColor};
     }
+  }
+
+  .system-resources {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    align-content: center;
   }
 
   .resource-cards {

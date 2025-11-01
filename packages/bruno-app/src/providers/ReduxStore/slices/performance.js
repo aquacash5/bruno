@@ -7,7 +7,8 @@ const initialState = {
     pid: null,
     uptime: 0,
     lastUpdated: null
-  }
+  },
+  pollingRateMs: 2000
 };
 
 export const performanceSlice = createSlice({
@@ -20,9 +21,12 @@ export const performanceSlice = createSlice({
         ...action.payload,
         lastUpdated: new Date().toISOString()
       };
+    },
+    updatePollingRateMs: (state, action) => {
+      state.pollingRateMs = action.payload;
     }
   }
 });
 
-export const { updateSystemResources } = performanceSlice.actions;
+export const { updateSystemResources, updatePollingRateMs } = performanceSlice.actions;
 export default performanceSlice.reducer;
