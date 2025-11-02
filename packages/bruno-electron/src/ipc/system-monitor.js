@@ -7,6 +7,7 @@ const registerSystemMonitorIpc = (mainWindow, systemMonitor) => {
 
   systemMonitor.on('error', (err) => console.error('Error getting system stats:', err));
   systemMonitor.on('changePollingRate', (pollingRate) => mainWindow.webContents.send('main:filesync-system-monitor-polling', pollingRate));
+  systemMonitor.on('started', (pollingRate) => mainWindow.webContents.send('main:filesync-system-monitor-polling', pollingRate));
 
   ipcMain.handle('renderer:start-system-monitoring', (event) => {
     try {

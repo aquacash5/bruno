@@ -185,6 +185,8 @@ const StyledWrapper = styled.div`
 
   .filter-dropdown-trigger {
     display: flex;
+    justify-content: space-between;
+    min-width: 100px;
     align-items: center;
     gap: 6px;
     padding: 6px 8px;
@@ -206,6 +208,8 @@ const StyledWrapper = styled.div`
       font-weight: 500;
       min-width: 24px;
       text-align: center;
+      display: flex;
+      gap: 5px;
     }
   }
 
@@ -517,4 +521,4 @@ const StyledWrapper = styled.div`
   }
 `;
 
-export default StyledWrapper; 
+export default StyledWrapper;

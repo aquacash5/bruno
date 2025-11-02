@@ -25,7 +25,7 @@ class SystemMonitor extends EventEmitter {
       return;
     }
 
-    this.emit('started');
+    this.emit('started', this.pollIntervalMs);
 
     // Set up periodic monitoring
     this.__emitSystemStats(true);

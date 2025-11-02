@@ -9,9 +9,11 @@ const StyledWrapper = styled.div`
   }
 
   .tab-content-area {
+    display: flex;
+    flex-direction: column;
     flex: 1;
-    overflow-y: auto;
     padding: 16px;
+    gap: 10px;
   }
 
   .overview-container {
@@ -46,31 +48,17 @@ const StyledWrapper = styled.div`
     }
   }
 
-  .title-area {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-
-    h2 {
-      margin: 0;
-      font-size: 14px;
-      font-weight: 600;
-      color: ${(props) => props.theme.console.titleColor};
-    }
-  }
-
-  .system-resources {
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-    align-content: center;
+  .system-resources h2 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: ${(props) => props.theme.console.titleColor};
   }
 
   .resource-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 8px;
-    margin-bottom: 16px;
   }
 
   .resource-card {

@@ -1,19 +1,20 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, forwardRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import ReactJson from 'react-json-view';
 import { useTheme } from 'providers/Theme';
-import { 
-  IconX, 
-  IconTrash, 
+import {
+  IconX,
+  IconTrash,
   IconFilter,
-  IconAlertTriangle, 
-  IconAlertCircle, 
+  IconAlertTriangle,
+  IconAlertCircle,
   IconBug,
   IconCode,
   IconChevronDown,
   IconTerminal2,
   IconNetwork,
-  IconDashboard
+  IconDashboard,
+  IconCaretDown
 } from '@tabler/icons';
 import { 
   closeConsole, 
@@ -25,7 +26,9 @@ import {
   updateNetworkFilter,
   toggleAllNetworkFilters
 } from 'providers/ReduxStore/slices/logs';
+import Dropdown from 'components/Dropdown';
 
+import { PERFORMANCE_POLLING_RATES } from './constants';
 import NetworkTab from './NetworkTab';
 import RequestDetailsPanel from './RequestDetailsPanel';
 // import DebugTab from './DebugTab';
@@ -133,10 +136,10 @@ const FilterDropdown = ({ filters, logCounts, onFilterToggle, onToggleAll }) => 
         onClick={() => setIsOpen(!isOpen)}
         title="Filter logs by type"
       >
-        <IconFilter size={16} strokeWidth={1.5} />
-        <span className="filter-summary">
-          {activeFilters.length === Object.keys(filters).length ? 'All' : `${activeFilters.length}/${Object.keys(filters).length}`}
-        </span>
+        <div className="filter-summary">
+          <IconFilter size={16} strokeWidth={1.5} />
+          <span>{activeFilters.length === Object.keys(filters).length ? 'All' : `${activeFilters.length}/${Object.keys(filters).length}`}</span>
+        </div>
         <IconChevronDown size={14} strokeWidth={1.5} />
       </button>
       
@@ -212,10 +215,10 @@ const NetworkFilterDropdown = ({ filters, requestCounts, onFilterToggle, onToggl
         onClick={() => setIsOpen(!isOpen)}
         title="Filter requests by method"
       >
-        <IconFilter size={16} strokeWidth={1.5} />
-        <span className="filter-summary">
-          {activeFilters.length === Object.keys(filters).length ? 'All' : `${activeFilters.length}/${Object.keys(filters).length}`}
-        </span>
+        <div className="filter-summary">
+          <IconFilter size={16} strokeWidth={1.5} />
+          <span>{activeFilters.length === Object.keys(filters).length ? 'All' : `${activeFilters.length}/${Object.keys(filters).length}`}</span>
+        </div>
         <IconChevronDown size={14} strokeWidth={1.5} />
       </button>
       
@@ -252,6 +255,65 @@ const NetworkFilterDropdown = ({ filters, requestCounts, onFilterToggle, onToggl
         </div>
       )}
     </div>
+  );
+};
+
+const currentPollingRate = (pollingRate) => {
+  const currentRate = PERFORMANCE_POLLING_RATES.find(({ rate }) => rate === pollingRate);
+
+  if (currentRate == null) {
+    return {
+      label: `Custom ${pollingRate}`,
+      rate: pollingRate
+    };
+  } else {
+    return currentRate;
+  }
+};
+
+const DropDownIcon = forwardRef(({ rate }, ref) => {
+  return (
+    <div className="filter-dropdown">
+      <button
+        ref={ref}
+        className="filter-dropdown-trigger"
+      >
+        <div className="filter-summary">
+          <span>{rate.label}</span>
+        </div>
+        <IconCaretDown className="caret ml-1 mr-1" size={14} strokeWidth={2} />
+      </button>
+    </div>
+  );
+});
+
+const PerformanceDropdown = () => {
+  const { ipcRenderer } = window;
+
+  const { pollingRateMs } = useSelector((state) => state.performance);
+  const currentRate = currentPollingRate(pollingRateMs);
+
+  const dropdownTippyRef = useRef();
+  const onDropdownCreate = (ref) => (dropdownTippyRef.current = ref);
+
+  return (
+    <Dropdown
+      onCreate={onDropdownCreate}
+      icon={<DropDownIcon rate={currentRate} />}
+      placement="bottom-end"
+    >
+      {PERFORMANCE_POLLING_RATES.map(({ label, rate }) => (
+        <div
+          className="dropdown-item"
+          onClick={() => {
+            dropdownTippyRef.current.hide();
+            ipcRenderer.invoke('renderer:polling-rate-system-monitoring', rate);
+          }}
+        >
+          {label}
+        </div>
+      ))}
+    </Dropdown>
   );
 };
 
@@ -442,6 +504,14 @@ const Console = () => {
             </div>
           </div>
         );
+      case 'performance':
+        return (
+          <div className="tab-controls">
+            <div className="filter-controls">
+              <PerformanceDropdown />
+            </div>
+          </div>
+        );
       // case 'debug':
       //   return (
       //     <div className="tab-controls">
@@ -541,4 +611,4 @@ const Console = () => {
   );
 };
 
-export default Console; 
+export default Console;
